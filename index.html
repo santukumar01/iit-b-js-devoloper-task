@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice Table with Sort and Toolbar</title>
+    <style>
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        font-size: 18px;
+        text-align: left;
+      }
+      th,
+      td {
+        padding: 12px;
+        border: 1px solid #ddd;
+      }
+      th {
+        background-color: #f2f2f2;
+        cursor: pointer;
+      }
+      th.sorted {
+        background-color: #ddd;
+      }
+      #toolbar {
+        margin-bottom: 10px;
+      }
+      #toolbar button {
+        margin-right: 10px;
+      }
+      #addRowForm {
+        margin-bottom: 20px;
+      }
+      #addRowForm input {
+        margin-right: 10px;
+      }
+      .selected {
+        background-color: #d1e7dd; /* Change background color of the selected row */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Invoice Table with Sort and Toolbar</h1>
+
+    <div id="toolbar">
+      <button onclick="addRow()">Add Row</button>
+      <button onclick="moveRowUp()">Move Row Up</button>
+      <button onclick="moveRowDown()">Move Row Down</button>
+      <button onclick="deleteRow()">Delete Row</button>
+      <button onclick="refreshData()">Refresh</button>
+    </div>
+
+    <!-- Form to add/edit a new row -->
+    <div id="addRowForm">
+      <input
+        type="text"
+        id="chemicalName"
+        placeholder="Chemical Name"
+        required
+      />
+      <input type="text" id="vendor" placeholder="Vendor" required />
+      <input type="text" id="density" placeholder="Density" required />
+      <input type="text" id="viscosity" placeholder="Viscosity" required />
+      <input type="text" id="packaging" placeholder="Packaging" required />
+      <input type="number" id="packSize" placeholder="Pack Size" required />
+      <input type="text" id="unit" placeholder="Unit" required />
+      <input type="number" id="quantity" placeholder="Quantity" required />
+      <button id="saveBtn" onclick="updateRow()" style="display: none">
+        Save
+      </button>
+      <!-- Save button -->
+    </div>
+
+    <table id="invoiceTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">Chemical Name</th>
+          <th onclick="sortTable(1)">Vendor</th>
+          <th onclick="sortTable(2)">Density</th>
+          <th onclick="sortTable(3)">Viscosity</th>
+          <th onclick="sortTable(4)">Packaging</th>
+          <th onclick="sortTable(5)">Pack Size</th>
+          <th onclick="sortTable(6)">Unit</th>
+          <th onclick="sortTable(7)">Quantity</th>
+          <th>Edit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Table rows will be dynamically inserted here -->
+      </tbody>
+    </table>
+
+    <script>
+      let selectedRow = null;
+      const sortOrder = new Array(8).fill(true); // Adjusted for the number of columns
+      let invoiceData = []; // To hold the current invoice data
+
+      // Sample default data for initialization
+      const defaultData = [
+        {
+          chemical_name: "Water",
+          vendor: "Vendor A",
+          density: "1.00",
+          viscosity: "1.0",
+          packaging: "Bottle",
+          pack_size: 1000,
+          unit: "ml",
+          quantity: 10,
+        },
+        {
+          chemical_name: "Sodium Chloride",
+          vendor: "Vendor B",
+          density: "2.16",
+          viscosity: "0.9",
+          packaging: "Bag",
+          pack_size: 2000,
+          unit: "g",
+          quantity: 15,
+        },
+        {
+          chemical_name: "Calcium Carbonate",
+          vendor: "Vendor C",
+          density: "2.71",
+          viscosity: "0.5",
+          packaging: "Bag",
+          pack_size: 1500,
+          unit: "g",
+          quantity: 20,
+        },
+        {
+          chemical_name: "Sodium Hydroxide",
+          vendor: "Vendor D",
+          density: "2.13",
+          viscosity: "1.1",
+          packaging: "Bottle",
+          pack_size: 500,
+          unit: "ml",
+          quantity: 25,
+        },
+        {
+          chemical_name: "Potassium Nitrate",
+          vendor: "Vendor E",
+          density: "1.98",
+          viscosity: "0.8",
+          packaging: "Bag",
+          pack_size: 3000,
+          unit: "g",
+          quantity: 30,
+        },
+        {
+          chemical_name: "Hydrochloric Acid",
+          vendor: "Vendor F",
+          density: "1.19",
+          viscosity: "0.7",
+          packaging: "Bottle",
+          pack_size: 750,
+          unit: "ml",
+          quantity: 12,
+        },
+        {
+          chemical_name: "Ammonium Sulfate",
+          vendor: "Vendor G",
+          density: "1.77",
+          viscosity: "0.6",
+          packaging: "Bag",
+          pack_size: 2500,
+          unit: "g",
+          quantity: 18,
+        },
+        {
+          chemical_name: "Boric Acid",
+          vendor: "Vendor H",
+          density: "1.44",
+          viscosity: "0.4",
+          packaging: "Bag",
+          pack_size: 1000,
+          unit: "g",
+          quantity: 10,
+        },
+        {
+          chemical_name: "Sodium Sulfate",
+          vendor: "Vendor I",
+          density: "2.68",
+          viscosity: "0.9",
+          packaging: "Bag",
+          pack_size: 2000,
+          unit: "g",
+          quantity: 16,
+        },
+        {
+          chemical_name: "Calcium Chloride",
+          vendor: "Vendor J",
+          density: "2.15",
+          viscosity: "0.7",
+          packaging: "Bag",
+          pack_size: 1500,
+          unit: "g",
+          quantity: 22,
+        },
+        {
+          chemical_name: "Magnesium Chloride",
+          vendor: "Vendor K",
+          density: "1.55",
+          viscosity: "0.5",
+          packaging: "Bag",
+          pack_size: 3000,
+          unit: "g",
+          quantity: 14,
+        },
+        {
+          chemical_name: "Sodium Bicarbonate",
+          vendor: "Vendor L",
+          density: "2.20",
+          viscosity: "0.4",
+          packaging: "Bag",
+          pack_size: 2500,
+          unit: "g",
+          quantity: 16,
+        },
+        {
+          chemical_name: "Ammonium Nitrate",
+          vendor: "Vendor M",
+          density: "1.73",
+          viscosity: "0.6",
+          packaging: "Bag",
+          pack_size: 1000,
+          unit: "g",
+          quantity: 28,
+        },
+        {
+          chemical_name: "Copper Sulfate",
+          vendor: "Vendor N",
+          density: "2.00",
+          viscosity: "0.8",
+          packaging: "Bag",
+          pack_size: 1500,
+          unit: "g",
+          quantity: 11,
+        },
+        {
+          chemical_name: "Magnesium Sulfate",
+          vendor: "Vendor O",
+          density: "1.68",
+          viscosity: "0.5",
+          packaging: "Bag",
+          pack_size: 3000,
+          unit: "g",
+          quantity: 19,
+        },
+      ];
+
+      // Initialize data function
+      function initializeData() {
+        if (localStorage.getItem("invoiceData") === null) {
+          invoiceData = defaultData; // Set default data
+          localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save to localStorage
+        } else {
+          invoiceData = JSON.parse(localStorage.getItem("invoiceData")); // Load data from localStorage
+        }
+        renderTable(); // Render table with initial data
+      }
+
+      // Render the table rows
+      function renderTable() {
+        const tableBody = document.querySelector("#invoiceTable tbody");
+        tableBody.innerHTML = ""; // Clear existing rows
+
+        invoiceData.forEach((data, index) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td onclick="selectRow(this.parentNode, ${index})">${data.chemical_name}</td>
+                    <td>${data.vendor}</td>
+                    <td>${data.density}</td>
+                    <td>${data.viscosity}</td>
+                    <td>${data.packaging}</td>
+                    <td>${data.pack_size}</td>
+                    <td>${data.unit}</td>
+                    <td>${data.quantity}</td>
+                    <td><button onclick="editRow(${index})">Edit</button></td>
+                `;
+          tableBody.appendChild(row);
+        });
+      }
+
+      // Sort the table by the specified column index
+      function sortTable(columnIndex) {
+        const sortDirection = sortOrder[columnIndex] ? 1 : -1; // Determine sort direction
+        sortOrder[columnIndex] = !sortOrder[columnIndex]; // Toggle sort order
+
+        invoiceData.sort((a, b) => {
+          const valueA = Object.values(a)[columnIndex].toString();
+          const valueB = Object.values(b)[columnIndex].toString();
+          return sortDirection === 1
+            ? valueA.localeCompare(valueB)
+            : valueB.localeCompare(valueA);
+        });
+
+        renderTable(); // Re-render table after sorting
+      }
+
+      // Function to toggle the visibility of the form
+      function toggleForm() {
+        const form = document.getElementById("addRowForm");
+        form.style.display = form.style.display === "none" ? "block" : "none";
+      }
+
+      // Add a new row
+      function addRow() {
+        const chemicalName = document
+          .getElementById("chemicalName")
+          .value.trim();
+        const vendor = document.getElementById("vendor").value.trim();
+        const density = document.getElementById("density").value.trim();
+        const viscosity = document.getElementById("viscosity").value.trim();
+        const packaging = document.getElementById("packaging").value.trim();
+        const packSize = document.getElementById("packSize").value.trim();
+        const unit = document.getElementById("unit").value.trim();
+        const quantity = document.getElementById("quantity").value.trim();
+
+        // Check if all fields are filled
+        if (
+          !chemicalName ||
+          !vendor ||
+          !density ||
+          !viscosity ||
+          !packaging ||
+          packSize === "" ||
+          !unit ||
+          quantity === ""
+        ) {
+          alert("Please fill in all fields.");
+          return;
+        }
+
+        // Validate pack size and quantity to ensure they are numbers
+        if (isNaN(packSize) || isNaN(quantity)) {
+          alert("Pack Size and Quantity must be numbers.");
+          return;
+        }
+
+        const newRow = {
+          chemical_name: chemicalName,
+          vendor: vendor,
+          density: density,
+          viscosity: viscosity,
+          packaging: packaging,
+          pack_size: parseInt(packSize),
+          unit: unit,
+          quantity: parseInt(quantity),
+        };
+
+        invoiceData.push(newRow); // Add to data array
+        localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save to localStorage
+        renderTable(); // Re-render table
+
+        // Clear the input fields
+        document.getElementById("chemicalName").value = "";
+        document.getElementById("vendor").value = "";
+        document.getElementById("density").value = "";
+        document.getElementById("viscosity").value = "";
+        document.getElementById("packaging").value = "";
+        document.getElementById("packSize").value = "";
+        document.getElementById("unit").value = "";
+        document.getElementById("quantity").value = "";
+      }
+
+      // Edit the selected row
+      function editRow(index) {
+        const data = invoiceData[index];
+
+        // Populate the input fields with the selected row's data
+        document.getElementById("chemicalName").value = data.chemical_name;
+        document.getElementById("vendor").value = data.vendor;
+        document.getElementById("density").value = data.density;
+        document.getElementById("viscosity").value = data.viscosity;
+        document.getElementById("packaging").value = data.packaging;
+        document.getElementById("packSize").value = data.pack_size;
+        document.getElementById("unit").value = data.unit;
+        document.getElementById("quantity").value = data.quantity;
+
+        selectedRow = index; // Keep track of the selected row for updating
+        document.getElementById("saveBtn").style.display = "inline"; // Show save button
+      }
+
+      // Update the selected row
+      function updateRow() {
+        if (selectedRow === null) return; // No row selected
+
+        const chemicalName = document
+          .getElementById("chemicalName")
+          .value.trim();
+        const vendor = document.getElementById("vendor").value.trim();
+        const density = document.getElementById("density").value.trim();
+        const viscosity = document.getElementById("viscosity").value.trim();
+        const packaging = document.getElementById("packaging").value.trim();
+        const packSize = document.getElementById("packSize").value.trim();
+        const unit = document.getElementById("unit").value.trim();
+        const quantity = document.getElementById("quantity").value.trim();
+
+        // Validate input
+        if (
+          !chemicalName ||
+          !vendor ||
+          !density ||
+          !viscosity ||
+          !packaging ||
+          packSize === "" ||
+          !unit ||
+          quantity === ""
+        ) {
+          alert("Please fill in all fields.");
+          return;
+        }
+
+        // Validate pack size and quantity to ensure they are numbers
+        if (isNaN(packSize) || isNaN(quantity)) {
+          alert("Pack Size and Quantity must be numbers.");
+          return;
+        }
+
+        // Update the invoiceData array
+        invoiceData[selectedRow] = {
+          chemical_name: chemicalName,
+          vendor: vendor,
+          density: density,
+          viscosity: viscosity,
+          packaging: packaging,
+          pack_size: parseInt(packSize),
+          unit: unit,
+          quantity: parseInt(quantity),
+        };
+
+        localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save updated data to localStorage
+        renderTable(); // Re-render table
+
+        // Clear the input fields and hide the save button
+        document.getElementById("chemicalName").value = "";
+        document.getElementById("vendor").value = "";
+        document.getElementById("density").value = "";
+        document.getElementById("viscosity").value = "";
+        document.getElementById("packaging").value = "";
+        document.getElementById("packSize").value = "";
+        document.getElementById("unit").value = "";
+        document.getElementById("quantity").value = "";
+        document.getElementById("saveBtn").style.display = "none"; // Hide save button
+        selectedRow = null; // Reset selected row
+      }
+
+      // Select a row and highlight it
+      function selectRow(row, index) {
+        if (selectedRow) {
+          const previouslySelectedRow = document.querySelector(".selected");
+          if (previouslySelectedRow) {
+            previouslySelectedRow.classList.remove("selected"); // Remove highlight from previously selected row
+          }
+        }
+        row.classList.add("selected"); // Highlight the selected row
+        selectedRow = index; // Update selected row index
+      }
+
+      // Move the selected row up
+      function moveRowUp() {
+        if (selectedRow === null) return;
+        if (selectedRow > 0) {
+          const temp = invoiceData[selectedRow - 1];
+          invoiceData[selectedRow - 1] = invoiceData[selectedRow];
+          invoiceData[selectedRow] = temp;
+          localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save to localStorage
+          renderTable(); // Re-render table
+          selectedRow--; // Update the selected row index
+        }
+      }
+
+      // Move the selected row down
+      function moveRowDown() {
+        if (selectedRow === null) return;
+        if (selectedRow < invoiceData.length - 1) {
+          const temp = invoiceData[selectedRow + 1];
+          invoiceData[selectedRow + 1] = invoiceData[selectedRow];
+          invoiceData[selectedRow] = temp;
+          localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save to localStorage
+          renderTable(); // Re-render table
+          selectedRow++; // Update the selected row index
+        }
+      }
+
+      // Delete the selected row
+      function deleteRow() {
+        if (selectedRow !== null) {
+          invoiceData.splice(selectedRow, 1); // Remove from data array
+          localStorage.setItem("invoiceData", JSON.stringify(invoiceData)); // Save to localStorage
+          renderTable(); // Re-render table
+          selectedRow = null; // Clear selection
+        }
+      }
+
+      // Refresh the table
+      function refreshData() {
+        localStorage.removeItem("invoiceData"); // Clear localStorage
+        invoiceData = []; // Reset data
+        initializeData(); // Re-initialize data
+        renderTable(); // Re-render table
+      }
+
+      // Load and render the table on page load
+      window.onload = initializeData;
+    </script>
+  </body>
+</html>
